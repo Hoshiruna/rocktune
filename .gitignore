@@ -1,0 +1,15 @@
+# Python caches and virtual environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Generated music data and validation reports
+/generated/
+
+# Local NES ROMs
+*.nes
+
+# Windows metadata
+Thumbs.db
+Desktop.ini

@@ -1,0 +1,33 @@
+; SPDX-License-Identifier: MIT
+; Original four-bar demonstration composed for this prototype.
+#title Phase 1 - C major demo
+#fps 60.0988
+
+SQ1:
+    t120 o4 l8 v12 @d2 @env4,1
+    |
+    c d e g e d c r
+    e g a >c <b a g r
+    f a >c <a g e d r
+    e g d f e d c4
+
+SQ2:
+    t120 o3 l2 v7 @d1 @env8,1
+    |
+    c e a e f a g e
+
+TRI:
+    t120 o2 l4
+    |
+    c g c g
+    a e a e
+    f c f c
+    g d g c
+
+NOI:
+    t120 l16 v9 @d0 @env1,3
+    |
+    n6 r n4 r n6 r n12 r n6 r n4 r n6 r n12 r
+    n6 r n4 r n6 r n12 r n6 r n4 r n6 r n12 r
+    n6 r n4 r n6 r n12 r n6 r n4 r n6 r n12 r
+    n6 r n4 r n6 r n12 r n6 r n4 r n6 r n12 r
