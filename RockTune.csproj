@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>rocktune</AssemblyName>
+    <RootNamespace>RockTune</RootNamespace>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <DefaultItemExcludes>$(DefaultItemExcludes);local_music_experiments/**;generated/**;*.nes;*.nsf</DefaultItemExcludes>
+  </PropertyGroup>
+  <ItemGroup>
+    <RockTuneSource Include="src/**/*.cs" />
+    <Compile Include="@(RockTuneSource)" />
+  </ItemGroup>
+  <Target Name="CheckClangFormat" BeforeTargets="CoreCompile" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec Command="clang-format --version" IgnoreExitCode="true"
+          IgnoreStandardErrorWarningFormat="true" LogStandardErrorAsError="false"
+          StandardOutputImportance="Low" StandardErrorImportance="Low">
+      <Output TaskParameter="ExitCode" PropertyName="ClangFormatExitCode" />
+    </Exec>
+    <Exec Condition="'$(ClangFormatExitCode)' == '0'"
+          Command="clang-format --dry-run --Werror @(RockTuneSource->'&quot;%(FullPath)&quot;', ' ')" />
+  </Target>
+</Project>

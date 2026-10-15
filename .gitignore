@@ -1,15 +1,22 @@
-# Python caches and virtual environments
-__pycache__/
-*.py[cod]
-.venv/
-venv/
-
 # Generated music data and validation reports
 /generated/
 
+# Local song experiments and retired tooling
+/local_music_experiments/
+
 # Local NES ROMs
 *.nes
+# NSF exports contain the original game driver.
+*.nsf
 
 # Windows metadata
 Thumbs.db
 Desktop.ini
+
+# .NET output and local IDE settings
+bin/
+obj/
+artifacts/
+.vs/
+*.user
+*.suo
