@@ -39,6 +39,8 @@ These commands assume `rocktune.exe`, `Rockman2.nes`, and your input files are i
 
 ## Notes
 
+See [Music IDs and slot capacities](docs/music-slots.md) for the full address and size table.
+
 - MIDI track numbers start at **1**. ROM music IDs start at **0**, range from `0..32`, and also accept `0x00..0x20`. Omitting `--track` selects ID 0.
 - **IDs 15 and 24..32 share music data.** Replacing any one changes all of them.
 - Use `--noi` for drums and `--noise-map` for explicit drum mappings. Standard import rejects overlapping notes; use `--arrangement` to select voices explicitly.

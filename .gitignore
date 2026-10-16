@@ -17,6 +17,7 @@ Desktop.ini
 bin/
 obj/
 artifacts/
+Properties/PublishProfiles
 .vs/
 *.user
 *.suo
