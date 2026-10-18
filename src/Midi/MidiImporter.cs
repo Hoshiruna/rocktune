@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 using System.Globalization;
 using RockTune.Domain;
+using RockTune.Mml;
 
 namespace RockTune.Midi;
 
@@ -172,10 +173,7 @@ public static class MidiImporter
             {
                 lines.Add("|");
             }
-            foreach (var group in tokens.Chunk(8))
-            {
-                lines.Add(string.Join(' ', group));
-            }
+            lines.Add(string.Join(' ', tokens));
             reports[channel] = new Report
             {
                 ["track"] = number, ["note_count"] = selected.Count, ["transpose_semitones"] = transpose,
@@ -192,6 +190,6 @@ public static class MidiImporter
             ["timbre_policy"] = "fixed NES timbres; sustain affects note length; MIDI program, velocity, other controllers omitted",
             ["noise_map"] = options.NoiseMap.OrderBy(item => item.Key).ToDictionary(item => item.Key.ToString(CultureInfo.InvariantCulture), item => item.Value)
         };
-        return new MidiImportResult(string.Join('\n', lines) + "\n", report);
+        return new MidiImportResult(MmlFormatter.Format(string.Join('\n', lines) + "\n"), report);
     }
 }

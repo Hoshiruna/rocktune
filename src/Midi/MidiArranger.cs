@@ -133,7 +133,7 @@ public static class MidiArranger
         result.Report["voice_policy"] = "explicit section arrangement; every chord reduction is recorded";
         result.Report["arrangement_plan"] = plan.Clone();
         var text = string.Join('\n', result.Text.Split('\n')
-            .Where(line => !(line.StartsWith("; MIDI track ", StringComparison.Ordinal) && line.Contains(" -> ", StringComparison.Ordinal))))
+            .Where(line => !(line.TrimStart().StartsWith("; MIDI track ", StringComparison.Ordinal) && line.Contains(" -> ", StringComparison.Ordinal))))
             .Replace("; MIDI track numbers are 1-based. %N means N NES update frames.",
                 "; Arranged from multiple source tracks. %N means N NES update frames.", StringComparison.Ordinal);
         return result with { Text = text };

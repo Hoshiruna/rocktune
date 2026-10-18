@@ -284,6 +284,8 @@ public static class CommandLine
             Overlapping notes require an explicit arrangement policy.
             MIDI channel 10 percussion requires NOI and explicit noise mappings.
             Writes editable MML and a JSON report with the same stem.
+            MML groups notes into short lines and omits repeated octave settings.
+            NOI volume changes stay beside their notes.
             """,
         "compile" or "nsf" => $"""
             Usage: rocktune {command} <song.mml> --rom Rockman2.nes --output <file{(command == "compile" ? ".bin" : command == "patch" ? ".nes" : ".nsf")}>

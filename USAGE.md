@@ -44,6 +44,7 @@ See [Music IDs and slot capacities](docs/music-slots.md) for the full address an
 - MIDI track numbers start at **1**. ROM music IDs start at **0**, range from `0..32`, and also accept `0x00..0x20`. Omitting `--track` selects ID 0.
 - **IDs 15 and 24..32 share music data.** Replacing any one changes all of them.
 - Use `--noi` for drums and `--noise-map` for explicit drum mappings. Standard import rejects overlapping notes; use `--arrangement` to select voices explicitly.
+- MIDI import writes short, indented MML lines, with NOI volume changes beside their notes. `%N` durations are exact frame counts.
 - Music that exceeds the selected slot's capacity is rejected before writing. Output cannot overwrite the source ROM.
 - A ROM with replaced music no longer matches the original checksum, but conversion can continue if its music layout remains compatible.
 - Imports and exports write JSON reports with the same filename stem. Use different output names, as shown above, to keep separate reports.
