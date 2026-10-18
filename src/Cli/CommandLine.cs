@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 using System.Globalization;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using RockTune.Compilation;
@@ -20,6 +21,13 @@ public static class CommandLine
         try
         {
             var arguments = Arguments.Parse(args);
+            if (arguments.ShowVersion)
+            {
+                var version = typeof(CommandLine).Assembly
+                    .GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion;
+                Console.WriteLine("v" + version.Split('+', 2)[0]);
+                return 0;
+            }
             if (arguments.Help || arguments.Command.Length == 0)
             {
                 Console.WriteLine(Help(arguments.Command));
@@ -298,6 +306,7 @@ public static class CommandLine
             RockTune - MIDI, MML and Rockman 2 music tools
 
             Usage: rocktune <command> <input> [options]
+                   rocktune.exe -version
 
               midi-info     List MIDI tracks, tempo and polyphony
               midi-import   Convert selected tracks or an arrangement to MML

@@ -11,6 +11,7 @@ internal sealed class Arguments
     public string Command { get; private set; } = "";
     public string Input { get; private set; } = "";
     public bool Help { get; private set; }
+    public bool ShowVersion { get; private set; }
     public bool Loop { get; private set; }
     public string? Value(string name) => values.TryGetValue(name, out var entries) ? entries[0] : null;
     public IEnumerable<string> All(string name) => values.TryGetValue(name, out var entries) ? entries : [];
@@ -21,6 +22,11 @@ internal sealed class Arguments
         var result = new Arguments();
         if (args.Length == 0)
         {
+            return result;
+        }
+        if (args[0] == "-version")
+        {
+            result.ShowVersion = true;
             return result;
         }
         if (args[0] is "-h" or "--help")

@@ -26,6 +26,9 @@ These commands assume `rocktune.exe`, `Rockman2.nes`, and your input files are i
 ## Other commands
 
 ```powershell
+# Show version
+.\rocktune.exe -version
+
 # Generate binary music data only
 .\rocktune.exe compile song.mml --rom Rockman2.nes --output music.bin
 
