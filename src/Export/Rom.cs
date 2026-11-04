@@ -17,10 +17,11 @@ public sealed class Rockman2Rom
     {
         Path = System.IO.Path.GetFullPath(path);
         Data = File.ReadAllBytes(path);
-        Validation = Rockman2RomValidator.Check(Data);
+        Validation = Rockman2RomValidator.Check(Data, Path);
         if (!Validation.IsCompatible)
         {
-            throw new MusicException("Unsupported Japanese ROM layout: " + Validation.Checks.First(check => !check.Passed).Detail);
+            throw new MusicException("Unsupported Rockman 2 / Mega Man 2 music layout: " +
+                                     Validation.Checks.First(check => !check.Passed).Detail);
         }
     }
 

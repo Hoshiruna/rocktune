@@ -1,9 +1,9 @@
 # RockTune
 
 RockTune is a C# command line program targeting .NET 10. It converts selected
-MIDI tracks to MML, encodes music for the original Japanese Rockman 2 driver,
+MIDI tracks to MML, encodes music for the  Rockman 2 / Mega Man 2 driver,
 exports a single-song NSF, replaces a selected music ID in a ROM copy, and
-checks Japanese ROM identity and music-layout compatibility.
+checks JP/US ROM identity and music-layout compatibility.
 
 The C# executable provides `midi-info`, `midi-import`, `compile`, `patch`,
 `nsf` and `rom-check`. It uses only .NET libraries. Its implementation in `src/` defines the

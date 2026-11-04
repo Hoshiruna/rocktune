@@ -6,18 +6,32 @@ namespace RockTune.Export;
 
 public sealed record RomCheck(string Name, bool Passed, string Detail);
 
-public sealed record RomValidationResult(IReadOnlyList<RomCheck> Checks, string? PrgSha1)
+public sealed record RomValidationResult(IReadOnlyList<RomCheck> Checks, string? PrgSha1,
+                                         string? ExpectedPrgSha1 = null)
 {
     public bool IsCompatible => Checks.All(check => check.Passed);
-    public bool IsOriginalJapaneseRom => IsCompatible && PrgSha1 == Rockman2RomValidator.JapanesePrgSha1;
+    public bool IsOriginalJpRom => IsCompatible && PrgSha1 == Rockman2RomValidator.JpPrgSha1;
+    public bool IsOriginalUsRom => IsCompatible && PrgSha1 == Rockman2RomValidator.UsPrgSha1;
+    public bool IsOriginalRom =>
+        (IsOriginalJpRom || IsOriginalUsRom) && (ExpectedPrgSha1 is null || PrgSha1 == ExpectedPrgSha1);
+    public string? Region => IsOriginalJpRom ? "Japan" : IsOriginalUsRom ? "USA" : null;
+    public string? ExpectedRegion => ExpectedPrgSha1 == Rockman2RomValidator.JpPrgSha1   ? "Japan"
+                                     : ExpectedPrgSha1 == Rockman2RomValidator.UsPrgSha1 ? "USA"
+                                                                                         : null;
 
     public Report ToReport(string path) => new()
     {
         ["source_rom"] = Path.GetFullPath(path),
-        ["original_japanese_rom"] = IsOriginalJapaneseRom,
+        ["original_jp_rom"] = IsOriginalJpRom,
+        ["original_us_rom"] = IsOriginalUsRom,
+        ["original_supported_rom"] = IsOriginalRom,
+        ["rom_region"] = Region,
+        ["expected_rom_region"] = ExpectedRegion,
+        ["expected_prg_sha1"] = ExpectedPrgSha1,
         ["music_layout_compatible"] = IsCompatible,
         ["prg_sha1"] = PrgSha1,
-        ["expected_japanese_prg_sha1"] = Rockman2RomValidator.JapanesePrgSha1,
+        ["expected_jp_prg_sha1"] = Rockman2RomValidator.JpPrgSha1,
+        ["expected_us_prg_sha1"] = Rockman2RomValidator.UsPrgSha1,
         ["identity_scope"] = "256 KiB PRG, excluding the 16-byte iNES header",
         ["checks"] = Checks.Select(check => new Report
         {
@@ -32,17 +46,23 @@ public static class Rockman2RomValidator
 {
     // PRG identity is independent of differing iNES header metadata.
     // Reference: https://dorando.emuverse.com/html/rockman-2.html
-    public const string JapanesePrgSha1 = "3E9DC769E1B63E73834786EC7FE9EDE7E706C72F";
+    public const string JpPrgSha1 = "3E9DC769E1B63E73834786EC7FE9EDE7E706C72F";
+    // US PRG identity: https://nesdir.github.io/0FCFC04D_USA.html
+    public const string UsPrgSha1 = "2EC08F9341003DED125458DF8697CA5EF09D2209";
     private const string DriverSha256 = "86361A8FBA393798EA1A9078BAD5592AEBF9C113BDE7D587BF8ABEB764CDC626";
 
-    public static RomValidationResult Check(ReadOnlySpan<byte> data)
+    public static RomValidationResult Check(ReadOnlySpan<byte> data, string? path = null)
     {
+        var name = Path.GetFileNameWithoutExtension(path);
+        var expectedPrgSha1 = string.Equals(name, "Megaman2", StringComparison.OrdinalIgnoreCase)   ? UsPrgSha1
+                              : string.Equals(name, "Rockman2", StringComparison.OrdinalIgnoreCase) ? JpPrgSha1
+                                                                                                    : null;
         var checks = new List<RomCheck>();
         var hasHeader = data.Length >= Rockman2Layout.HeaderSize && data[..4].SequenceEqual("NES\u001a"u8);
         checks.Add(new RomCheck("ines_header", hasHeader, hasHeader ? "iNES header found" : "Input is not an iNES ROM"));
         if (!hasHeader)
         {
-            return new RomValidationResult(checks, null);
+            return new RomValidationResult(checks, null, expectedPrgSha1);
         }
         var mapper = (data[6] >> 4) | (data[7] & 0xF0);
         var layout = data.Length == Rockman2Layout.HeaderSize + Rockman2Layout.PrgSize &&
@@ -52,7 +72,7 @@ public static class Rockman2RomValidator
             : "Expected 262160 bytes, 256 KiB PRG, CHR RAM, mapper 1, iNES 1.0 and no trainer"));
         if (!layout)
         {
-            return new RomValidationResult(checks, null);
+            return new RomValidationResult(checks, null, expectedPrgSha1);
         }
         var prgSha1 = Convert.ToHexString(SHA1.HashData(data[Rockman2Layout.HeaderSize..]));
         var driver = data.Slice(Rockman2Layout.MusicBankFile, Rockman2Layout.PitchTableAddress - 0x8000);
@@ -112,7 +132,7 @@ public static class Rockman2RomValidator
         checks.Add(new RomCheck("music_headers", headerErrors.Count == 0, headerErrors.Count == 0
             ? "Music markers and channel/MOD pointers fit the documented slots"
             : string.Join("; ", headerErrors)));
-        return new RomValidationResult(checks, prgSha1);
+        return new RomValidationResult(checks, prgSha1, expectedPrgSha1);
     }
 
     private static int Word(ReadOnlySpan<byte> data, int offset) => BinaryPrimitives.ReadUInt16LittleEndian(data.Slice(offset, 2));

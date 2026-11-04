@@ -19,6 +19,8 @@ public sealed record MusicSlot(int Id, int Address, int EndAddress, IReadOnlyLis
 
 public static class Rockman2Layout
 {
+    // Rockman 2 and Mega Man 2 share this music layout and driver.
+    // US reference: https://github.com/plasticsmoke/megaman2-disassembly-ca65/blob/main/src/bank0C_sound_engine.asm
     public const int HeaderSize = 16;
     public const int PrgSize = 0x40000;
     public const int MusicBankFile = 0x30010;

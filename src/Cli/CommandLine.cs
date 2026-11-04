@@ -69,8 +69,11 @@ public static class CommandLine
             OutputFiles.ProtectInputs(output, args.Input);
             OutputFiles.RequireExtension(output, ".json");
         }
-        var validation = Rockman2RomValidator.Check(File.ReadAllBytes(args.Input));
-        Console.WriteLine("Original Japanese PRG: " + (validation.IsOriginalJapaneseRom ? "PASS" : "FAIL (modified, unknown or unsupported ROM)"));
+        var validation = Rockman2RomValidator.Check(File.ReadAllBytes(args.Input), args.Input);
+        Console.WriteLine("Expected ROM region: " + (validation.ExpectedRegion ?? "JP or US (detected by checksum)"));
+        Console.WriteLine("ROM region: " + (validation.Region ?? "Unknown (modified or unrecognized PRG)"));
+        Console.WriteLine("Original PRG identity: " +
+                          (validation.IsOriginalRom ? "PASS" : "FAIL (wrong region, modified or unknown PRG)"));
         Console.WriteLine("Music layout compatible: " + (validation.IsCompatible ? "PASS" : "FAIL"));
         foreach (var check in validation.Checks)
         {
@@ -90,7 +93,7 @@ public static class CommandLine
             OutputFiles.SaveReport(output, validation.ToReport(args.Input));
             Console.WriteLine("Report: " + Path.GetFullPath(output));
         }
-        return validation.IsOriginalJapaneseRom ? 0 : 1;
+        return validation.IsOriginalRom ? 0 : 1;
     }
 
     private static void RunMidi(Arguments args)
@@ -251,12 +254,15 @@ public static class CommandLine
     private static string Help(string command) => command switch
     {
         "rom-check" => """
-            Usage: rocktune.exe rom-check <Rockman2.nes> [--output report.json]
+            Usage: rocktune.exe rom-check <rom.nes> [--output report.json]
 
-            Verify original Japanese PRG identity and supported music layout.
+            Verify original Japanese Rockman 2 or US Mega Man 2 PRG identity
+            and the shared music layout. Megaman2.nes selects the US checksum;
+            Rockman2.nes selects the JP checksum (filenames are case-insensitive).
+            Other filenames allow either supported checksum.
             Checks iNES metadata, original driver code, music/SFX pointers,
             pitch-table words and music headers. Lists music IDs and capacities.
-            Exit 0: original Japanese PRG and compatible layout. Exit 1: check failed.
+            Exit 0: expected original PRG and compatible layout. Exit 1: check failed.
             Modified music may retain a compatible layout but fails original-PRG identity.
             The input ROM is read only.
             """,
@@ -270,6 +276,7 @@ public static class CommandLine
             Music is compiled for the selected slot and must fit its capacity.
             IDs 15 and 24..32 share data; replacing any one changes all of them.
             Writes a ROM copy and JSON report without overwriting the source ROM.
+            Supports Japanese Rockman 2 and US Mega Man 2 ROMs.
             Use rom-check to list slot addresses and capacities.
             """,
         "midi-info" => """
@@ -298,7 +305,8 @@ public static class CommandLine
         "compile" or "nsf" => $"""
             Usage: rocktune {command} <song.mml> --rom Rockman2.nes --output <file{(command == "compile" ? ".bin" : command == "patch" ? ".nes" : ".nsf")}>
 
-            Uses the original Japanese ROM layout and writes a JSON report.
+            Uses the shared Japanese Rockman 2 / US Mega Man 2 music layout
+            and writes a JSON report.
             compile: encode MML for the original driver at $8AD6.
             nsf:     export one NTSC song; --speed FACTOR scales event durations.
             """,
@@ -311,9 +319,9 @@ public static class CommandLine
               midi-info     List MIDI tracks, tempo and polyphony
               midi-import   Convert selected tracks or an arrangement to MML
               compile       Compile MML to original-driver binary music
-              patch         Replace a selected music ID in a Japanese ROM copy
+              patch         Replace a selected music ID in a Japanese/US ROM copy
               nsf           Export MML as a single-song NSF
-              rom-check     Check Japanese ROM identity, layout and music slots
+              rom-check     Check Japanese/US ROM identity, layout and music slots
 
             Use rocktune <command> --help for options.
             Exit codes: 0 success/help, 1 input or output error, 2 command-line usage.

@@ -1,6 +1,6 @@
 # Music IDs and Slot Capacities
 
-These slots apply to the supported Japanese Rockman 2 ROM. Music IDs start at
+These slots apply to both Japanese Rockman 2 and US Mega Man 2 ROMs. Music IDs start at
 **0** and can be passed to `patch --track` as decimal or `0x` hexadecimal values.
 IDs `0x21` and above are sound effects and cannot be selected for music replacement.
 
@@ -52,3 +52,11 @@ There are 33 music IDs backed by 24 distinct slots.
 Slot ends use the next distinct music or sound-effect address. The final
 physical music slot (`0x17`) ends immediately before sound effect `0x21`.
 Aliased IDs do not provide additional storage.
+
+## ROM references
+
+The US [sound-bank disassembly](https://github.com/plasticsmoke/megaman2-disassembly-ca65/blob/main/src/bank0C_sound_engine.asm)
+documents the shared driver entries at `$8000` and `$8003`, pitch table at `$8985`,
+pointer table at `$8A50`, and first music slot at `$8AD6` in bank `$0C`.
+The [US cartridge record](https://nesdir.github.io/0FCFC04D_USA.html) lists PRG SHA-1
+`2EC08F9341003DED125458DF8697CA5EF09D2209`, excluding the iNES header.
