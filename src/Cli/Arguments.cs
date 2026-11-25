@@ -5,7 +5,8 @@ internal sealed class ArgumentException(string message) : Exception(message);
 
 internal sealed class Arguments
 {
-    private static readonly HashSet<string> Commands = ["midi-info", "midi-import", "compile", "patch", "nsf", "rom-check"];
+    private static readonly HashSet<string> Commands =
+        ["midi-info", "midi-import", "compile", "patch", "nsf", "rom-check", "dump-audio", "patch-audio"];
     private static readonly HashSet<string> ImportValues = ["output", "arrangement", "sq1", "sq2", "tri", "noi", "noise-map", "transpose", "start", "end", "fps"];
     private readonly Dictionary<string, List<string>> values = [];
     public string Command { get; private set; } = "";
@@ -41,7 +42,7 @@ internal sealed class Arguments
         }
         HashSet<string> allowed = result.Command switch
         {
-            "midi-info" or "rom-check" => ["output"],
+            "midi-info" or "rom-check" or "dump-audio" => ["output"],
             "midi-import" => ImportValues,
             "nsf" => ["rom", "output", "speed"],
             "patch" => ["rom", "output", "track"],
@@ -127,26 +128,27 @@ internal sealed class Arguments
         {
             result.Required("output");
         }
-        if (result.Command is "compile" or "patch" or "nsf")
+        if (result.Command is "compile" or "patch" or "nsf" or "patch-audio")
         {
             result.Required("rom");
         }
         if (result.Command == "patch")
         {
-            result.TrackId();
+            result.TrackId(allowEffects: true);
         }
         return result;
     }
 
-    public int TrackId()
+    public int TrackId(bool allowEffects = false)
     {
         var text = Value("track") ?? "0";
         var hex = text.StartsWith("0x", StringComparison.OrdinalIgnoreCase);
         if (!int.TryParse(hex ? text[2..] : text,
             hex ? System.Globalization.NumberStyles.AllowHexSpecifier : System.Globalization.NumberStyles.Integer,
-            System.Globalization.CultureInfo.InvariantCulture, out var id) || id is < 0 or > 32)
+            System.Globalization.CultureInfo.InvariantCulture, out var id) || id < 0 || id > (allowEffects ? 0x42 : 0x20))
         {
-            throw new ArgumentException("--track requires a ROM music ID from 0 to 32 (0x00..0x20); 0x21 and above are sound effects");
+            throw new ArgumentException(allowEffects ? "--track requires a ROM audio ID from 0x00 to 0x42" :
+                "--track requires a ROM music ID from 0x00 to 0x20");
         }
         return id;
     }

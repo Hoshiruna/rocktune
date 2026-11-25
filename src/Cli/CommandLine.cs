@@ -37,7 +37,15 @@ public static class CommandLine
             {
                 return RunRomCheck(arguments);
             }
-            if (arguments.Command.StartsWith("midi-", StringComparison.Ordinal))
+            if (arguments.Command == "dump-audio")
+            {
+                RunAudioDump(arguments);
+            }
+            else if (arguments.Command == "patch-audio")
+            {
+                RunAudioBatchPatch(arguments);
+            }
+            else if (arguments.Command.StartsWith("midi-", StringComparison.Ordinal))
             {
                 RunMidi(arguments);
             }
@@ -211,8 +219,14 @@ public static class CommandLine
         var reportPath = Path.ChangeExtension(output, ".json");
         OutputFiles.ProtectInputs(reportPath, romPath, args.Input);
         var rom = new Rockman2Rom(romPath);
+        var text = OutputFiles.ReadText(args.Input);
+        if (NativeAudioMml.IsNative(text))
+        {
+            RunNativeExport(args, rom, text, output, reportPath);
+            return;
+        }
         var slot = args.Command == "patch" ? Rockman2Layout.GetSlot(args.TrackId()) : null;
-        var score = MmlParser.Parse(OutputFiles.ReadText(args.Input));
+        var score = MmlParser.Parse(text);
         var speed = Rational.Parse(args.Value("speed") ?? "1");
         var song = MusicCompiler.Compile(score, rom.PitchPeriods(), speed,
             address: slot?.Address ?? Rockman2Rom.Track00Address,
@@ -245,6 +259,100 @@ public static class CommandLine
         PrintPaths(output, reportPath);
     }
 
+    private static void RunAudioDump(Arguments args)
+    {
+        var rom = new Rockman2Rom(args.Input);
+        var directory = args.Required("output");
+        var slots = Enumerable.Range(0, Rockman2Layout.LastSoundEffectId + 1)
+            .Select(Rockman2Layout.GetAudioSlot).DistinctBy(slot => slot.Address);
+        var files = new List<(string Path, string Text)>();
+        foreach (var slot in slots)
+        {
+            var group = slot.Id < Rockman2Layout.FirstSoundEffectId ? "bgm" : "sfx";
+            var output = Path.Combine(directory, group, $"{group}-{slot.Id:x2}.mml");
+            if (File.Exists(output))
+            {
+                throw new MusicException("MML export already exists: " + output);
+            }
+            var text = NativeAudioDump.Dump(rom, slot);
+            var compiled = NativeAudioMml.Compile(text).Data;
+            var original = rom.Data.AsSpan(slot.FileStart, slot.Capacity);
+            if (!original[..compiled.Length].SequenceEqual(compiled) ||
+                original[compiled.Length..].IndexOfAnyExcept((byte)0) >= 0)
+            {
+                throw new MusicException($"Export for ID 0x{slot.Id:X2} did not reproduce its ROM bytes");
+            }
+            files.Add((output, text));
+        }
+        foreach (var (output, text) in files)
+        {
+            OutputFiles.WriteText(output, text);
+        }
+        Console.WriteLine($"Exported {files.Count} BGM/SFX scores to {Path.GetFullPath(directory)}");
+    }
+
+    private static void RunAudioBatchPatch(Arguments args)
+    {
+        var rom = new Rockman2Rom(args.Required("rom"));
+        var output = args.Required("output");
+        OutputFiles.RequireExtension(output, ".nes");
+        var reportPath = Path.ChangeExtension(output, ".json");
+        var paths = new[] { "bgm", "sfx" }.Select(group => Path.Combine(args.Input, group))
+            .Where(Directory.Exists)
+            .SelectMany(directory => Directory.EnumerateFiles(directory, "*.mml"))
+            .Order(StringComparer.Ordinal).ToArray();
+        if (paths.Length == 0)
+        {
+            throw new MusicException("No MML found under the audio directory's bgm/ or sfx/ folders");
+        }
+        string[] inputs = [rom.Path, ..paths];
+        OutputFiles.ProtectInputs(output, inputs);
+        OutputFiles.ProtectInputs(reportPath, inputs);
+        var entries = new List<(int Id, byte[] Data)>();
+        foreach (var path in paths)
+        {
+            try
+            {
+                var program = NativeAudioMml.Compile(OutputFiles.ReadText(path));
+                entries.Add((program.Slot.Id, program.Data));
+            }
+            catch (MusicException error)
+            {
+                throw new MusicException($"{path}: {error.Message}");
+            }
+        }
+        var report = rom.ReplaceAudio(entries, output);
+        OutputFiles.SaveReport(reportPath, report);
+        PrintPaths(output, reportPath);
+    }
+
+    private static void RunNativeExport(Arguments args, Rockman2Rom rom, string text, string output, string reportPath)
+    {
+        if (args.Command == "nsf")
+        {
+            throw new MusicException("Use compile or patch for #rockman2 audio");
+        }
+        var program = NativeAudioMml.Compile(text);
+        var report = program.Slot.ToReport();
+        report["source_mml"] = Path.GetFullPath(args.Input);
+        report["encoded_bytes"] = program.Data.Length;
+        if (args.Command == "patch")
+        {
+            var target = args.Value("track") is null ? program.Slot : Rockman2Layout.GetAudioSlot(args.TrackId(allowEffects: true));
+            if (target.Address != program.Slot.Address)
+            {
+                throw new MusicException("For native MML, --track must match #rockman2 or name a shared ID");
+            }
+            report["patch"] = rom.ReplaceAudio([(target.Id, program.Data)], output);
+        }
+        else
+        {
+            OutputFiles.WriteBytes(output, program.Data);
+        }
+        OutputFiles.SaveReport(reportPath, report);
+        PrintPaths(output, reportPath);
+    }
+
     private static void PrintPaths(string output, string report)
     {
         Console.WriteLine("Output: " + Path.GetFullPath(output));
@@ -253,6 +361,18 @@ public static class CommandLine
 
     private static string Help(string command) => command switch
     {
+        "dump-audio" => """
+            Usage: rocktune dump-audio <rom.nes> --output <directory>
+
+            Export one #rockman2 MML file per BGM or SFX slot under bgm/ and sfx/.
+            Each export is checked against its ROM bytes before writing.
+            """,
+        "patch-audio" => """
+            Usage: rocktune patch-audio <directory> --rom <input.nes> --output <copy.nes>
+
+            Compile #rockman2 MML under bgm/ and sfx/ and write a ROM copy.
+            Each file's #rockman2 ID selects the original ROM slot.
+            """,
         "rom-check" => """
             Usage: rocktune.exe rom-check <rom.nes> [--output report.json]
 
@@ -269,10 +389,10 @@ public static class CommandLine
         "patch" => """
             Usage: rocktune.exe patch <song.mml> --rom Rockman2.nes --output copy.nes [--track ID]
 
-              --track ID   ROM music ID 0..32 (0x00..0x20); default 0
+              --track ID   Default 0 for ordinary MML. For #rockman2, the declared ID is the default.
 
             IDs start at 0, unlike MIDI file track numbers. Decimal and 0x-prefixed
-            hexadecimal are accepted. IDs 0x21 and above are sound effects.
+            hexadecimal are accepted. Native #rockman2 MML chooses its own music or SFX ID.
             Music is compiled for the selected slot and must fit its capacity.
             IDs 15 and 24..32 share data; replacing any one changes all of them.
             Writes a ROM copy and JSON report without overwriting the source ROM.
@@ -319,7 +439,9 @@ public static class CommandLine
               midi-info     List MIDI tracks, tempo and polyphony
               midi-import   Convert selected tracks or an arrangement to MML
               compile       Compile MML to original-driver binary music
-              patch         Replace a selected music ID in a Japanese/US ROM copy
+              patch         Replace music or a native SFX in a Japanese/US ROM copy
+              dump-audio    Export original music and sound effects to MML
+              patch-audio   Compile a BGM/SFX MML folder to a ROM copy
               nsf           Export MML as a single-song NSF
               rom-check     Check Japanese/US ROM identity, layout and music slots
 

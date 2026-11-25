@@ -29,6 +29,8 @@ public static class Rockman2Layout
     public const int PitchCount = 0x60;
     public const int LastMusicId = 0x20;
     public const int FirstSoundEffectId = 0x21;
+    public const int LastSoundEffectId = 0x42;
+    public const int AudioDataEnd = 0xBFD8;
 
     // The supplied address reference omits the 16-byte iNES header.
     // IDs $18..$20 alias the physical song stored at ID $0F.
@@ -70,10 +72,19 @@ public static class Rockman2Layout
         {
             throw new MusicException("ROM music ID must be 0..32 (0x00..0x20); 0x21 and above are sound effects");
         }
+        return GetAudioSlot(trackId);
+    }
+
+    public static MusicSlot GetAudioSlot(int trackId)
+    {
+        if (trackId is < 0 or > LastSoundEffectId)
+        {
+            throw new MusicException("ROM audio ID must be 0x00..0x42");
+        }
         var address = TrackPointers[trackId];
         // Use the next distinct address, not the next table ID: aliases are not sorted.
-        var end = TrackPointers.Where(pointer => pointer > address).Min();
-        var aliases = Enumerable.Range(0, LastMusicId + 1).Where(id => TrackPointers[id] == address).ToArray();
+        var end = TrackPointers.Where(pointer => pointer > address).DefaultIfEmpty(AudioDataEnd).Min();
+        var aliases = Enumerable.Range(0, TrackPointers.Count).Where(id => TrackPointers[id] == address).ToArray();
         return new MusicSlot(trackId, address, end, Array.AsReadOnly(aliases));
     }
 

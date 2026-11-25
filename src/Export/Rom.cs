@@ -56,4 +56,37 @@ public sealed class Rockman2Rom
             ["unused_bytes"] = slot.Capacity - song.Data.Length, ["other_rom_bytes_unchanged"] = true
         };
     }
+
+    public Report ReplaceAudio(IReadOnlyList<(int Id, byte[] Data)> entries, string destination)
+    {
+        OutputFiles.ProtectInputs(destination, Path);
+        var result = (byte[])Data.Clone();
+        var addresses = new HashSet<int>();
+        var slots = new List<Report>();
+        foreach (var (id, data) in entries)
+        {
+            var slot = Rockman2Layout.GetAudioSlot(id);
+            if (!addresses.Add(slot.Address))
+            {
+                throw new MusicException($"Audio ID 0x{id:X2} duplicates a supplied shared slot");
+            }
+            if (data.Length > slot.Capacity)
+            {
+                throw new MusicException($"Audio ID 0x{id:X2} has {data.Length} bytes for a {slot.Capacity}-byte slot");
+            }
+            result.AsSpan(slot.FileStart, slot.Capacity).Clear();
+            data.CopyTo(result, slot.FileStart);
+            var report = slot.ToReport();
+            report["encoded_bytes"] = data.Length;
+            slots.Add(report);
+        }
+        OutputFiles.WriteBytes(destination, result);
+        return new Report
+        {
+            ["source_rom"] = Path,
+            ["output_rom"] = System.IO.Path.GetFullPath(destination),
+            ["audio_slots"] = slots,
+            ["other_rom_bytes_unchanged"] = true
+        };
+    }
 }

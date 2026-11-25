@@ -6,7 +6,7 @@ exports a single-song NSF, replaces a selected music ID in a ROM copy, and
 checks JP/US ROM identity and music-layout compatibility.
 
 The C# executable provides `midi-info`, `midi-import`, `compile`, `patch`,
-`nsf` and `rom-check`. It uses only .NET libraries. Its implementation in `src/` defines the
+`nsf`, `rom-check`, `dump-audio` and `patch-audio`. It uses only .NET libraries. Its implementation in `src/` defines the
 supported commands, options and file formats.
 
 ## Usage
